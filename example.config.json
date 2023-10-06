@@ -1,0 +1,8 @@
+{
+  "owner": "kubernetes-sigs",
+  "repo": "kustomize",
+  "object_regex": "kustomize_v.*_linux_amd64.tar.gz",
+  "target_binary": "kustomize",
+  "autocomplete_bash": "source <(kustomize completion bash)",
+  "path": "/tmp/output"
+}
