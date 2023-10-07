@@ -62,7 +62,8 @@ class GetGithubRelease:
         else:
             for entry in data:
                 tag = entry['tag_name']
-                logging.debug(f"{tag} - data: {entry}")
+                logging.debug(f"Tag matching? {tag} == {self.version_match}: {tag.startswith(self.version_match)}")
+                logging.debug(f"Entry is: {entry}")
                 if self.version_match != '':
                     if tag.startswith(self.version_match):
                         return entry
