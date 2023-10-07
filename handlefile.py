@@ -9,28 +9,47 @@ from consolidateconfig import ConsolidateConfig
 from getgithubrelease import GithubAsset
 
 class HandleFile:
-    def __init__(self, config: ConsolidateConfig, target: str, asset: GithubAsset):
+    def __init__(self, config: ConsolidateConfig, asset_to_handle: str, asset: GithubAsset):
         logging.debug('HandleFile:__init__')
         self.config = config
         self.asset  = asset
         asset_item  = self.config.get('object_regex')
 
-        self.target_file=target
+        self.asset_to_handle=asset_to_handle
 
-        if asset_item.endswith('.deb'):
-            self._handleDeb()
-        elif (
-            asset_item.endswith('.tar.gz') or 
-            asset_item.endswith('.tgz') or
-            asset_item.endswith('.tar') or
-            asset_item.endswith('.tar.bz2') or
-            asset_item.endswith('.tar.bz')
-        ):
-            self._handleTar()
-        elif asset_item.endswith('.zip'):
-            self._handleZip()
+        # Get the version number
+        version_search = re.search(r'^[^0-9]*([0-9].*)', self.asset.tag)
+        if version_search:
+            self.version = version_search.group(1)
         else:
-            self._handleBinary()
+            self.version = self.asset.release_date
+
+        self.target_deb_path=os.path.join(self.config.get('deb_repo_path', self.config.get('path')), 'pool', self.config.get('deb_component', 'main'))
+        self.target_filename=f"{self.config.get('repo')}_{self.version}_{self.config.get('architecture')}.deb"
+        self.target_deb=os.path.join(self.target_deb_path, self.target_filename)
+
+        # Check whether we already have this release of the package. Return if we do.
+        run_process=True
+        if self.config.get('target') == 'deb':
+            if os.path.exists(self.target_deb):
+                logging.info("Target file already exists. Skipping.")
+                run_process=False
+
+        if run_process:
+            if asset_item.endswith('.deb'):
+                self._handleDeb()
+            elif (
+                asset_item.endswith('.tar.gz') or 
+                asset_item.endswith('.tgz') or
+                asset_item.endswith('.tar') or
+                asset_item.endswith('.tar.bz2') or
+                asset_item.endswith('.tar.bz')
+            ):
+                self._handleTar()
+            elif asset_item.endswith('.zip'):
+                self._handleZip()
+            else:
+                self._handleBinary()
 
     def _tempdir(self):
         logging.debug('HandleFile:_tempdir')
@@ -58,16 +77,15 @@ class HandleFile:
 
     def _handleDeb(self):
         logging.debug('HandleFile:_handleDeb')
-        # TODO: Untested!
-        os.makedirs(f"{self.config.get('path')}", mode=0o755, exist_ok=True)
-        shutil.move(self.target_file, f"{self.config.get('path')}")
+        os.makedirs(self.target_deb_path, mode=0o755, exist_ok=True)
+        shutil.move(self.asset_to_handle, self.target_deb)
     
     def _handleTar(self):
         logging.debug('HandleFile:_handleTar')
         workdir = self._tempdir()
-        with tarfile.open(self.target_file, 'r') as tar:
+        with tarfile.open(self.asset_to_handle, 'r') as tar:
             tar.extractall(path=workdir)
-        self.target_file = self._findbinary()
+        self.asset_to_handle = self._findbinary()
         self._handleBinary()
 
     def _handleBinary(self):
@@ -78,16 +96,10 @@ class HandleFile:
             if self.config.get('root_only', 'NONE') != 'NONE':
                 bin_path='sbin'
             if self.config.get('target') == 'deb':
-                # Get the version number
-                version_search = re.search(r'^[^0-9]*([0-9].*)', self.asset.tag)
-                if version_search:
-                    version = version_search.group(1)
-                else:
-                    version = self.asset.release_date
                 # Build the control file text
                 control = [
                     f"Package:      {self.config.get('repo')}",
-                    f"Version:      {version}",
+                    f"Version:      {self.version}",
                     f"Architecture: {self.config.get('architecture')}",
                     "Section:      misc",
                     f"Maintainer:   '{self.config.get('maintainer', self.config.get('owner'))} <{self.config.get('maintainer', self.config.get('owner'))}@users.noreply.github.com>'",
@@ -105,7 +117,7 @@ class HandleFile:
                         file.write(line + "\n")
 
                 os.makedirs(f"{workdir}/usr/{bin_path}", mode=0o755, exist_ok=True)
-                shutil.move(self.target_file, f"{workdir}/usr/{bin_path}")
+                shutil.move(self.asset_to_handle, f"{workdir}/usr/{bin_path}")
 
                 if self.config.exists('autocomplete_bash'):
                     os.makedirs(f"{workdir}/etc/bash_completion.d", mode=0o755, exist_ok=True)
@@ -118,15 +130,15 @@ class HandleFile:
                                 logging.debug(f"Writing {line}")
                                 file.write(line + "\n")
 
-                os.makedirs(self.config.get('path'), mode=0o755, exist_ok=True)
-                output=f"{self.config.get('path')}/{self.config.get('repo')}_{version}_{self.config.get('architecture')}.deb"
-                cmd=f"dpkg-deb --build '{workdir}' '{output}'"
+
+                os.makedirs(self.target_deb_path, mode=0o755, exist_ok=True)
+                cmd=f"dpkg-deb --build '{workdir}' '{self.target_deb}'"
                 subprocess.run(cmd, shell=True, check=True)
-                return output
+                return True
         except BaseException as e:
             logging.error(repr(e))
             debug=self.config.get('debug')
-            if (isinstance(debug, bool) and self.config.get('debug')) or (isinstance(self.config.get('debug'), str) and self.config.get('debug').lower == 'true'):
+            if (isinstance(debug, bool) and debug) or (isinstance(debug, str) and debug.lower == 'true'):
                 logging.error(repr(e))
                 logging.error(f"Please find the current state of the build in {workdir}")
                 subprocess.run("sleep 10000", shell=True, check=True)
