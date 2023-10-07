@@ -56,7 +56,7 @@ try:
         logging.info(f"Getting asset {asset}")
         HandleFile(
             allConfig,
-            DownloadFile(assets[asset], f"{tempdir.name}/source").getTarget(),
+            DownloadFile(assets[asset], config=allConfig, target=f"{tempdir.name}/source").getTarget(),
             assets[asset]
         )
 except BaseException as e:
