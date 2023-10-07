@@ -35,6 +35,12 @@ The config file is a JSON file with a set of key-value pairs. These are:
 * `owner`: The name of the owner or organisation that the repository belongs
 to.
 * `repo`: The name of the project to get the releases from.
+* `version_match`: The string to match at the start of the release, for example
+if you only wanted to track version `1.x.x` of a release train, then you could
+specify this as `v1.`, or perhaps you want anything matching `1.2.x` then you'd
+specify `1.2.`. Also some repos track multiple threads, e.g. `gui-` and `cli-`.
+In this case, you might specify `gui-` here to only look for those tagged
+releases.
 * `object_regex`: A regex to match looking for the release name. This could be
 as simple as `.*_linux` or more complex, like
 `programme_v\d+\.\d+\.\d+_linux_amd64\.tar\.gz`.
