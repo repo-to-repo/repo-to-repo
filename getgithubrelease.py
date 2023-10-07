@@ -12,7 +12,10 @@ class GetGithubRelease:
         self.version_match = ''
         self.object_regex  = ''
         self.latest        = True
-
+        self.headers       = {}
+        
+        if self.config.exists('headers') and self.config.get('headers') != '':
+            self.headers = self.config.get('headers')
         if self.config.exists('owner') and self.config.get('owner') != '':
             logging.debug("Setting owner from config")
             self.owner               = self.config.get('owner')
@@ -38,10 +41,12 @@ class GetGithubRelease:
         github_api_url = f'https://api.github.com/repos/{self.owner}/{self.repo}/releases?page={page}'
         if self.latest:
             github_api_url = f'https://api.github.com/repos/{self.owner}/{self.repo}/releases/latest'
+        else:
+            logging.info("Asking Github for a list of all releases.")
 
         try:
             logging.debug(f"Getting API {github_api_url}")
-            response = requests.get(github_api_url)
+            response = requests.get(github_api_url, headers=self.headers)
         except:
             logging.error("Unable to load github api")
             exit(1)        

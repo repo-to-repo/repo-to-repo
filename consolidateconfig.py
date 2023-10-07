@@ -1,4 +1,5 @@
 import logging
+import os
 
 class ConsolidateConfig:
     def __init__(self, config, args, tempdir):
@@ -16,6 +17,8 @@ class ConsolidateConfig:
                 if arg_name in self.configValues:
                     logging.debug(f"Argument {arg_name} overrides existing config value.")
                 self.configValues[arg_name] = arg_value
+        if os.environ.get('GH_PAT') is not None:
+            self.configValues['headers'] = {'Authorization': f"Bearer {os.environ.get('GH_PAT')}"}
 
     def exists(self, key: str) -> bool:
         if key in self.configValues:
