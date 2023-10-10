@@ -60,7 +60,7 @@ other values, such as:
 * `architecture`: (Default: all/noarch) The name of the architecture that the
 package manager expects. Some automatic handling of amd64 <-> x86_64 and so on
 may occur.
-* `maintainer`: (Optional) The name and email address of the package 
+* `maintainer`: (Optional) The name and email address of the package
 maintainer, to be used for corporate deployments (for example). Defaults to the
 `owner` value, turned into the required format.
 * `description`: (Optional) A description of the output package.
