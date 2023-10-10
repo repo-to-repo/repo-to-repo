@@ -19,6 +19,7 @@ parser.add_argument('--version-match', '-m', default='UNDEF', help='Specify the 
 parser.add_argument('--object-regex', '-e', default='UNDEF', help='Specify the string to use to find the file match to get')
 parser.add_argument('--target', '-t', default='deb', choices=['deb', 'rpm'], help='The target OS family to get or build a repo for')
 parser.add_argument('--path', '-p', default='UNDEF', help='The path to place the downloaded files')
+parser.add_argument('--private-key', '-k', default=None, help='**DANGER** Do not use this outside testing environments. Instead pass the environment variable PRIVATE_KEY with the content of this file. The private key for GPG signing the resulting repository files.')
 parser.add_argument('--debug', '-d', action='store_true', help='Enable debug logging')
 args = parser.parse_args()
 
@@ -43,7 +44,11 @@ if disable_debug:
 
 tempdir = tempfile.TemporaryDirectory()
 
-allConfig = ConsolidateConfig(config, args, tempdir=tempdir.name)
+try:
+    allConfig = ConsolidateConfig(config, args, tempdir=tempdir.name)
+except BaseException as e:
+    logging.error(e.message)
+    exit(1)
 
 if not allConfig.exists('path'):
     logging.error(f"No target path defined")

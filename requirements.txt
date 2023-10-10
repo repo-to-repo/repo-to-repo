@@ -1,0 +1,15 @@
+python-gnupg
+requests
+## Core libraries - do not need to obtain!
+# io
+# re
+# os
+# bz2
+# gzip
+# json
+# lzma
+# logging
+# tarfile
+# zipfile
+# argparse
+# tempfile

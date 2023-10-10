@@ -57,14 +57,33 @@ automatically into a Debian or RedHat package. To do that, it needs certain
 other values, such as:
 
 * `target_binary`: The name of the binary you expect to run.
-* `architecture`: (Optional) The name of the architecture that the package
-manager expects. Some automatic handling of amd64 <-> x86_64 and so on may
-occur.
+* `architecture`: (Default: all/noarch) The name of the architecture that the
+package manager expects. Some automatic handling of amd64 <-> x86_64 and so on
+may occur.
 * `maintainer`: (Optional) The name and email address of the package 
 maintainer, to be used for corporate deployments (for example). Defaults to the
 `owner` value, turned into the required format.
 * `description`: (Optional) A description of the output package.
 * `dependency`: (Optional) A list of the dependencies
+
+#### Format Specific Options: Debian
+
+Some values can be automatically calculated or defaults supplied, but these are
+the Debian specific options:
+
+* `deb_architecture`: (Default: value of `{architecture}` value) Some specific
+edge cases are noted (e.g. `all` in Debian packages is recorded as `noarch` in
+RedHat packages).
+* `deb_codename`: (Default: value of `{repo}/{owner}`) The specific type of
+package release this is terminating this should be applied to. When talking
+about specific distribution releases, this could be listed as the codename for
+that release, e.g. `jammy` or `wheezy`, however in this case, it will be the
+name of the particular package type that is being tracked.
+* `deb_component`: (Default: `latest`) The types of packages found in this
+repository, usually like `main`, `restricted` etc. In this case, it should be
+redefined as the particular release to be tracked, e.g. "v1.27" or "v5.x". By
+default, it is set to the keyword `latest`. A possible change later would be to
+make this pick up details from the `{version_match}` value.
 
 ### Autocompletion
 
