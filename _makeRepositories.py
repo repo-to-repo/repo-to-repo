@@ -155,4 +155,5 @@ class MakeDebRepository:
 
 class MakeRPMRepository:
     def __init__(self, targets):
-        print("TODO: Make RPM Repo")
+        # TODO: Write RPM repo creator
+        pass

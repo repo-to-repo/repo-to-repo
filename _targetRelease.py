@@ -225,6 +225,10 @@ class TargetRelease:
                 file.write(self.result['autocomplete']['bash'])
                 file.write("\n")
 
+    def _renderRpmPackage(self):
+        # TODO: Write RPM package creator
+        pass
+
     def _renderDebPackage(self):
         if self.result['name'].endswith('.deb'):
             self.result["deb_package_filename"] = self.result['name']
@@ -278,5 +282,7 @@ class TargetRelease:
         self._getAsset()
         if 'deb' in self.result['formats']:
             self._renderDebPackage()
+        if 'rpm' in self.result['formats']:
+            self._renderRpmPackage()
         if os.path.exists(os.path.join(self.config["workdir"], self.result['repo'])):
             shutil.rmtree(os.path.join(self.config["workdir"], self.result['repo']))
