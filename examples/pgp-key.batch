@@ -1,0 +1,8 @@
+Key-Type: RSA
+Key-Length: 4096
+Name-Real: Repo-To-Repo Packager
+Name-Email: packagers@example.org
+Expire-Date: 0
+%no-ask-passphrase
+%no-protection
+%commit

@@ -12,3 +12,12 @@ class PGPKeyFileNotFoundError(Exception):
 
 class PGPLoadError(Exception):
     pass
+
+class NoConfigurationFileFound(ValueError):
+    pass
+
+class NoTargetPathDefined(ValueError):
+    pass
+
+class ConfigErrorNoRepositories(ValueError):
+    pass

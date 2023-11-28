@@ -1,0 +1,56 @@
+{
+    "path": "/tmp/output",
+    "architecture": "amd64",
+    "formats": ["deb", "rpm"],
+    "repos": [
+        {
+            "owner": "kubernetes-sigs",
+            "repo": "kustomize",
+            "target_binary": "kustomize",
+            "version_match": "kustomize/v5",
+            "autocomplete": {
+                "bash": "source <(kustomize completion bash)"
+            },
+            "suite": "pinned",
+            "archive": "kustomize-v5",
+            "targets": [
+                {
+                    "object_regex": "kustomize_v.*_linux_amd64.tar.gz"
+                },
+                {
+                    "formats": ["deb"],
+                    "architecture": "arm64",
+                    "object_regex": "kustomize_v.*_linux_arm64.tar.gz"
+                }
+            ]
+        },
+        {
+            "owner": "terminate-notice",
+            "repo": "terminate-notice",
+            "architecture": "all",
+            "targets": [
+                {
+                    "formats": ["deb"],
+                    "object_regex": "terminate-notice_.*_all.deb"
+                },
+                {
+                    "formats": ["rpm"],
+                    "object_regex": "terminate-notice-.*.noarch.rpm"
+                }
+            ]
+        },
+        {
+            "owner": "Versent",
+            "repo": "saml2aws",
+            "target_binary": "saml2aws",
+            "autocomplete": {
+                "bash": "source <(saml2aws --completion-script-bash)"
+            },
+            "targets": [
+                {
+                    "object_regex": "saml2aws_.*_linux_amd64.tar.gz"
+                }
+            ]
+        }
+    ]
+}

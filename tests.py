@@ -5,7 +5,7 @@ import tempfile
 import os
 
 from repo_to_repo import Configuration
-from _exceptions import PGPKeyFileNotFoundError
+from _exceptions import PGPLoadError, ConfigErrorNoRepositories
 
 
 class AllTests(unittest.TestCase):
@@ -57,7 +57,7 @@ class TestTargets(AllTests):
                 self.config_file_with_off_policy_archive.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        Configuration(config_file.name, pgp_file.name)
+        Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -72,7 +72,7 @@ class TestTargets(AllTests):
                 self.config_file_with_off_policy_suite.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        Configuration(config_file.name, pgp_file.name)
+        Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -87,7 +87,7 @@ class TestTargets(AllTests):
                 self.config_file_with_off_policy_architecture.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        Configuration(config_file.name, pgp_file.name)
+        Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -102,7 +102,7 @@ class TestTargets(AllTests):
                 self.config_file_with_unmanaged_autocomplete.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        Configuration(config_file.name, pgp_file.name)
+        Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -117,7 +117,12 @@ class TestConfiguration(AllTests):
             config_file.write(self.minimal_config.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        config = Configuration(config_file.name, pgp_file.name)
+        config = Configuration(
+            config_file.name,
+            pgp_file.name,
+            runtime_config={'quiet': False}
+        )
+        config.get_targets()
         self.assertEqual(len(config.targets), 1)
         os.remove(config_file.name)
         os.remove(pgp_file.name)
@@ -127,7 +132,12 @@ class TestConfiguration(AllTests):
             config_file.write(self.small_config.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        config = Configuration(config_file.name, pgp_file.name)
+        config = Configuration(
+            config_file.name,
+            pgp_file.name,
+            runtime_config={'quiet': False}
+        )
+        config.get_targets()
         self.assertEqual(len(config.targets), 1)
         os.remove(config_file.name)
         os.remove(pgp_file.name)
@@ -137,29 +147,34 @@ class TestConfiguration(AllTests):
             config_file.write(self.complete_config.encode())
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        config = Configuration(config_file.name, pgp_file.name)
+        config = Configuration(
+            config_file.name,
+            pgp_file.name,
+            runtime_config={'quiet': False}
+        )
+        config.get_targets()
         self.assertEqual(len(config.targets), 1)
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
     def test_no_files_supplied(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PGPLoadError):
             Configuration()
 
     def test_config_file_not_found(self):
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
         with self.assertRaises(FileNotFoundError):
-            Configuration("/nonexistent_file.json", pgp_file.name)
+            Configuration("/nonexistent_file.json", pgp_file.name).get_targets()
         os.remove(pgp_file.name)
 
     def test_config_file_parse_error(self):
         with tempfile.NamedTemporaryFile(delete=False) as config_file:
             config_file.write(b"invalid json")
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
-            pgp_file.write(b"pgp_key")
+            pgp_file.write(self.valid_pgp_block)
         with self.assertRaises(ValueError):
-            Configuration(config_file.name, pgp_file.name)
+            Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -218,9 +233,9 @@ class TestConfiguration(AllTests):
         with tempfile.NamedTemporaryFile(delete=False) as config_file:
             config_file.write(b'{}')
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
-            pgp_file.write(b"pgp_key")
+            pgp_file.write(self.valid_pgp_block)
         with self.assertRaises(ValueError):
-            Configuration(config_file.name, pgp_file.name)
+            Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 
@@ -229,8 +244,8 @@ class TestConfiguration(AllTests):
             config_file.write(b'{"path": "/tmp", "architecture": "amd64"}')
         with tempfile.NamedTemporaryFile(delete=False) as pgp_file:
             pgp_file.write(self.valid_pgp_block)
-        with self.assertRaises(ValueError):
-            Configuration(config_file.name, pgp_file.name)
+        with self.assertRaises(ConfigErrorNoRepositories):
+            Configuration(config_file.name, pgp_file.name).get_targets()
         os.remove(config_file.name)
         os.remove(pgp_file.name)
 

@@ -23,7 +23,7 @@ class RunService:
         parser.add_argument("--config", required=True, help="Path to the config file")
         parser.add_argument("--pgp-key", default=None, help="Path to the PGP private key file. Override with `export pgp_key_base64='string'` for a base64 encoded string of the pgp key, or `export pgp_key='path'` for the path to the file.")
         parser.add_argument('--debug', '-d', action='store_true', help='Enable debug logging')
-        # TODO: Somehow disable warnings!?!?
+        parser.add_argument('--quiet', '-q', action='store_true', help='Disable warnings')
         parser.add_argument('--output-path', '--output', help="Override the config-defined path to the output.")
 
         target_path = parser.add_mutually_exclusive_group()

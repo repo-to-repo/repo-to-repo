@@ -92,7 +92,8 @@ class TargetRelease:
         if self.result['architecture'] is None or self.result['architecture'] == '':
             raise RepoTargetMissingValue("architecture is a required value.")
         if not self.result['architecture'] in validArchitectures:
-            logging.warning(f"architecture ('{self.result['architecture']}') is not, but should be, one of ('noarch' == 'all' == 'any'), ('x86-64' == 'amd64'), or ('arm64' == 'aarch64') due to architecture mapping. [Pull requests, welcome!](https://github.com/repo-to-repo/repo-to-repo)")
+            if not self.config['quiet']:
+                logging.warning(f"architecture ('{self.result['architecture']}') is not, but should be, one of ('noarch' == 'all' == 'any'), ('x86-64' == 'amd64'), or ('arm64' == 'aarch64') due to architecture mapping. [Pull requests, welcome!](https://github.com/repo-to-repo/repo-to-repo)")
 
         if not isinstance(self.result['owner'], str):
             raise RepoTargetInvalidValue(f"owner must be a string, got {type(self.result['owner'])}")
@@ -115,7 +116,8 @@ class TargetRelease:
                     if shell != 'bash':
                         unused_autocompletes += [shell]
                 if len(unused_autocompletes) > 0:
-                    logging.warning(f"You have specified shells in autocomplete which are not currently handled ({unused_autocompletes}). These won't be actioned. [Pull requests, welcome!](https://github.com/repo-to-repo/repo-to-repo)")
+                    if not self.config['quiet']:
+                        logging.warning(f"You have specified shells in autocomplete which are not currently handled ({unused_autocompletes}). These won't be actioned. [Pull requests, welcome!](https://github.com/repo-to-repo/repo-to-repo)")
 
         if 'deb' in self.result['formats']:
             # Debian specific formats
@@ -124,14 +126,16 @@ class TargetRelease:
             if self.result['archive'] is None or self.result['archive'] == '':
                 raise RepoTargetMissingValue("archive is a required value for debian format packages.")
             if not self.result['archive'] in validArchives:
-                logging.warning(f"Archive ('{self.result['archive']}') is not, but should be, one of the valid archives from the list in the [Debian Policy](https://www.debian.org/doc/debian-policy/ch-archive.html#archive-areas). Ensure you're comfortable with this before publishing.")
+                if not self.config['quiet']:
+                    logging.warning(f"Archive ('{self.result['archive']}') is not, but should be, one of the valid archives from the list in the [Debian Policy](https://www.debian.org/doc/debian-policy/ch-archive.html#archive-areas). Ensure you're comfortable with this before publishing.")
             
             if self.result['suite'] is None or self.result['suite'] == '':
                 raise RepoTargetMissingValue("suite is a required value for debian format packages.")
             if not isinstance(self.result['suite'], str):
                 raise RepoTargetInvalidValue(f"suite must be a string, got {type(self.result['suite'])}")
             if not self.result['suite'] in validSuites:
-                logging.warning(f"suite ('{self.result['suite']}') is not, but should be, one of the valid suites from the list in the [Debian Policy](https://www.debian.org/doc/debian-policy/ch-archive.html#s-subsections). Ensure you're comfortable with this before publishing.")
+                if not self.config['quiet']:
+                    logging.warning(f"suite ('{self.result['suite']}') is not, but should be, one of the valid suites from the list in the [Debian Policy](https://www.debian.org/doc/debian-policy/ch-archive.html#s-subsections). Ensure you're comfortable with this before publishing.")
             
             if self.result['priority'] is None or self.result['priority'] == '':
                 raise RepoTargetMissingValue("priority is a required value for debian format packages.")
