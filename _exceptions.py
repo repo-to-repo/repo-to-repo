@@ -4,6 +4,9 @@ class RepoTargetInvalidValue(Exception):
 class RepoTargetMissingValue(Exception):
     pass
 
+class ApiNotAvailable(Exception):
+    pass
+
 class GithubApiNotAvailable(Exception):
     pass
 
@@ -20,4 +23,7 @@ class NoTargetPathDefined(ValueError):
     pass
 
 class ConfigErrorNoRepositories(ValueError):
+    pass
+
+class NotRoot(Exception):
     pass

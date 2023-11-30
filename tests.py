@@ -110,6 +110,13 @@ class TestTargets(AllTests):
         mock_warning.assert_called_once_with(
             "You have specified shells in autocomplete which are not currently handled (['tcsh']). These won't be actioned. [Pull requests, welcome!](https://github.com/repo-to-repo/repo-to-repo)")
 
+    # TODO: Write more tests! Some things to consider:
+    # TODO: We probably need to put some mocking in place for "interacting with github" so that we don't burn through api credits
+    # TODO: Write a test which confirms that everything works right given a known repo, release name and binary target
+    # TODO: Write a test which confirms how we handle repos which aren't available
+    # TODO: Write a test which confirms how we handle a repo with no releases
+    # TODO: Write a test which confirms how we handle a repo which has releases but which doesn't match our regex
+    # TODO: Write a test which confirms how we handle a release which doesn't have an asset which matches our regex
 
 class TestConfiguration(AllTests):
     def test_valid_config_file_parse(self):

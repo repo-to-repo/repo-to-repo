@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
 import os
-import re
-import json
-import base64
+import pwd
 import logging
 import argparse
-import tempfile
-import requests
 
 from _configuration import Configuration
 from _makeRepositories import MakeRepository,MakeDebRepository, MakeRPMRepository
+from _exceptions import NotRoot
 
 class RunService:
     def __init__(self):
@@ -37,6 +34,12 @@ class RunService:
         self.config = Configuration(args.config, args.pgp_key, args)
         self.config.load_pgp_privatekey()
         self.config.get_targets()
+        
+        uid = os.getuid()
+        if uid != 0:
+            for target in self.config.targets:
+                if 'rpm' in target.result['formats']:
+                    raise NotRoot("This script cannot proceed, as you are not root, and you've requested an RPM package, which requires root.")
 
         debs = []
         rpms = []

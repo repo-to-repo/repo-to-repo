@@ -154,6 +154,6 @@ class MakeDebRepository:
             process.communicate(input_data.read())
 
 class MakeRPMRepository:
-    def __init__(self, targets):
+    def __init__(self, targets, runtime_config):
         # TODO: Write RPM repo creator
         pass

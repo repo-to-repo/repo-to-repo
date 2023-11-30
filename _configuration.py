@@ -222,6 +222,10 @@ class Configuration:
 
         for this_repo in config["repos"]:
 
+            if "platform" not in this_repo:
+                this_repo["platform"] = "github"
+            repo_platform = this_repo["platform"]
+
             if "owner" not in this_repo:
                 raise ValueError(
                     f"Config Error: Failure parsing repo - missing owner field. Repo values: {this_repo}")
@@ -315,7 +319,8 @@ class Configuration:
                                 "debian_dependencies": repo_debian_dependencies,
                                 "redhat_dependencies": repo_redhat_dependencies,
                                 "version_match": repo_version_match,
-                                "object_regex": repo_target_binary
+                                "object_regex": repo_target_binary,
+                                "platform": repo_platform
                             },
                             self.runtime_config
                         )
@@ -395,7 +400,8 @@ class Configuration:
                                     "debian_dependencies": target_debian_dependencies,
                                     "redhat_dependencies": target_redhat_dependencies,
                                     "version_match": target_version_match,
-                                    "object_regex": target_object_regex
+                                    "object_regex": target_object_regex,
+                                    "platform": repo_platform
                                 },
                                 self.runtime_config
                             )

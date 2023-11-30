@@ -4,10 +4,12 @@ import os
 import re
 import shutil
 import subprocess
+import tarfile
+import zipfile
 
 import requests
 
-from _exceptions import RepoTargetInvalidValue, RepoTargetMissingValue, GithubApiNotAvailable
+from _exceptions import RepoTargetInvalidValue, RepoTargetMissingValue, GithubApiNotAvailable, ApiNotAvailable
 
 class TargetRelease:
     def __init__(self, target: dict, runtime_config: dict = None):
@@ -41,9 +43,9 @@ class TargetRelease:
             if architecture in ['all', 'noarch', 'any']:
                 self.result["debian_architecture"] = 'all'
                 self.result["redhat_architecture"] = 'noarch'
-            if architecture in ['x86-64', 'amd64']: # 64bit Intel
+            if architecture in ['x86_64', 'amd64', 'x86-64']: # 64bit Intel
                 self.result["debian_architecture"] = 'amd64'
-                self.result["redhat_architecture"] = 'x86-64'
+                self.result["redhat_architecture"] = 'x86_64'
             if architecture in ['aarch64', 'arm64']: # 64bit ARM
                 self.result["debian_architecture"] = 'arm64'
                 self.result["redhat_architecture"] = 'aarch64'
@@ -146,88 +148,222 @@ class TargetRelease:
 
         logging.debug(f"Values validated for RepoTarget: object_regex: {self.result['object_regex']} | formats: {self.result['formats']} | architecture: {self.result['architecture']} | owner: {self.result['owner']} | repo: {self.result['repo']} | target_binary: {self.result['target_binary']} | version_match: {self.result['version_match']} | autocomplete: {self.result['autocomplete']} | suite: {self.result['suite']} | archive: {self.result['archive']}")
 
-    def _getReleaseData(self, page: int = 1) -> bool:
-        github_api_url = f'https://api.github.com/repos/{self.result["owner"]}/{self.result["repo"]}/releases?page={page}'
-
-        if self.result["version_match"] is None or self.result["version_match"] == '' or self.result["version_match"] == 'latest':
-            github_api_url = f'https://api.github.com/repos/{self.result["owner"]}/{self.result["repo"]}/releases/latest'
-        else:
-            logging.info("Asking Github for a list of all releases.")
-
+    def _getData(self, api_url: str) -> json:
         try:
-            logging.debug(f"Getting API {github_api_url}")
-            response = requests.get(github_api_url, headers=self.config["headers"])
+            logging.debug(f"Getting API {api_url}")
+            response = requests.get(api_url, headers=self.config["headers"])
         except:
-            raise GithubApiNotAvailable("Unable to load github api")
-
+            raise ApiNotAvailable("Unable to load github api")
         if response.status_code != 200:
-            raise GithubApiNotAvailable(f"Failed to retrieve data from GitHub API. Status code: {response.status_code}")
+            raise ApiNotAvailable(f"Failed to retrieve data from GitHub API. Status code: {response.status_code}")
+        
+        return response.json()
 
-        data = response.json()
-        if self.result["version_match"] is None or self.result["version_match"] == '' or self.result["version_match"] == 'latest':
-            self.release = data
-            return True
-        else:
-            for entry in data:
-                tag = entry['tag_name']
-                version_match = self.result["version_match"]
-                logging.debug(f"Tag matching? {tag} == {version_match}: {tag.startswith(version_match)}")
-                if version_match != '':
-                    if tag.startswith(self.result['version_match']):
+    def _getReleaseData(self, page: int = 1) -> bool:
+        # TODO: Consider how to handle a non Github Repo
+        # TODO: Consider how to handle more than a single binary release, e.g. aws-cli
+        if "platform" not in self.result or self.result['platform'] == 'github':
+            if 'license' not in self.result:
+                data = self._getData(f'https://api.github.com/repos/{self.result["owner"]}/{self.result["repo"]}')
+                self.result['license'] = 'TBC'
+                if (
+                    'license' in data and
+                    len(data['license']) > 0 and
+                    'name' in data['license'] and
+                    len(data['license']['name']) > 0
+                ):
+                    self.result['license'] = data['license']['name']
+
+            data = self._getData(f'https://api.github.com/repos/{self.result["owner"]}/{self.result["repo"]}/releases?page={page}')
+            if self.result["version_match"] is None or self.result["version_match"] == '' or self.result["version_match"] == 'latest':
+                self.release = data[0]
+                return True
+            else:
+                for entry in data:
+                    tag = entry['tag_name']
+                    version_match = self.result["version_match"]
+                    logging.debug(f"Tag matching? {tag} == {version_match}: {tag.startswith(version_match)}")
+                    if version_match != '':
+                        if tag.startswith(self.result['version_match']):
+                            self.release = entry
+                            return True
+                    else:
                         self.release = entry
                         return True
-                else:
-                    self.release = entry
-                    return True
-        
-        if len(data) > 0:
-            return self._getReleaseData(page+1)
+            
+            if len(data) > 0:
+                return self._getReleaseData(page+1)
+            else:
+                raise RecursionError("Failed to get a release")
         else:
-            raise RecursionError("Failed to get a release")
+            raise ValueError(f"Invalid platform defined. Got {self.result['platform']}")
     
     def _getAsset(self) -> bool:
-        for asset in self.release['assets']:
-            nameMatch = re.match(self.result.get('object_regex'), asset['name'])
-            if nameMatch:
-                self.result['name'] = asset['name']
+        self.package_path=os.path.join(self.config["workdir"], 'SOURCES', self.result['repo'])
 
-                versionSearch = re.search(r'^[^0-9]*([0-9].*)', self.release['tag_name'])
-                if versionSearch:
-                    versionNumber = versionSearch.group(1)
-                else:
-                    versionNumber = self.release['published_at']
+        if "platform" not in self.result or self.result['platform'] == 'github':
+            for asset in self.release['assets']:
+                nameMatch = re.match(self.result.get('object_regex'), asset['name'])
+                if nameMatch:
+                    self.result['name'] = asset['name']
 
-                self.result['versionNumber'] = versionNumber
-
-                with open(os.path.join(self.config["workdir"], asset['name']), 'wb') as downloadFile:
-                    response = requests.get(asset['browser_download_url'], self.config["headers"])
-                    if response.status_code == 200:
-                        downloadFile.write(response.content)
-                        self.result['file'] = downloadFile.name
-                        logging.debug(f"Written file to {downloadFile.name}")
+                    versionSearch = re.search(r'^[^0-9]*([0-9].*)', self.release['tag_name'])
+                    if versionSearch:
+                        versionNumber = versionSearch.group(1)
                     else:
-                        raise FileNotFoundError("Failed to download the file")
-                return True
-        raise ValueError("Did not match the asset in the object_regex")
+                        versionNumber = self.release['published_at']
 
-    def _preparePackage(self):
+                    self.result['versionNumber'] = versionNumber
+
+                    with open(os.path.join(self.config["workdir"], asset['name']), 'wb') as downloadFile:
+                        response = requests.get(asset['browser_download_url'], self.config["headers"])
+                        if response.status_code == 200:
+                            downloadFile.write(response.content)
+                            self.result['file'] = downloadFile.name
+                            downloadFile.close()
+                            logging.debug(f"Written file to {downloadFile.name}")
+                        else:
+                            raise FileNotFoundError("Failed to download the file")
+                        
+                    file_extensions = ['.tgz', '.gz', '.bz2', '.xz', '.zip']
+                    unpack_dir = os.path.join(self.config['workdir'], 'unpack')
+
+                    if any(self.result['file'].endswith(ext) for ext in file_extensions):
+                        # Unpack the file based on its extension
+                        if self.result['file'].endswith('.zip'):
+                            with zipfile.ZipFile(self.result['file'], 'r') as zip_ref:
+                                zip_ref.extractall(unpack_dir)
+                        elif self.result['file'].endswith('.tgz') or self.result['file'].endswith('.gz'):
+                            with tarfile.open(self.result['file'], 'r:gz') as tar_ref:
+                                tar_ref.extractall(unpack_dir)
+                        elif self.result['file'].endswith('.bz2'):
+                            with tarfile.open(self.result['file'], 'r:bz2') as tar_ref:
+                                tar_ref.extractall(unpack_dir)
+                        elif self.result['file'].endswith('.xz'):
+                            with tarfile.open(self.result['file'], 'r:xz') as tar_ref:
+                                tar_ref.extractall(unpack_dir)
+
+                        file_regex = self.result.get('file_regex', f"^{self.result['target_binary']}$")
+                        for root, _, files in os.walk(unpack_dir):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                if os.path.isfile(file_path) and re.match(file_regex, file):
+                                    self.result['file'] = file_path
+                    return True
+            raise ValueError("Did not match the asset in the object_regex")
+        else:
+            raise ValueError(f"Invalid platform defined. Got {self.result['platform']}")
+
+    def _preparePackage(self) -> list:
         if not os.path.exists(self.config["workdir"]):
             raise FileNotFoundError(f"Workdir Path not found {self.config['workdir']}")
         if not os.path.exists(self.config["builddir"]):
             raise FileNotFoundError(f"Builddir Path not found {self.config['builddir']}")
 
-        os.makedirs(os.path.join(self.config["workdir"], self.result['repo'], 'usr', 'local', 'bin'))
-        # TODO: Does *not* handle compressed files at all.
-        os.rename(self.result['file'], os.path.join(self.config["workdir"], self.result['repo'], 'usr', 'local', 'bin', self.result['target_binary']))
+        os.makedirs(os.path.join(self.package_path, 'usr', 'local', 'bin'))
+        shutil.copy(self.result['file'], os.path.join(self.package_path, 'usr', 'local', 'bin', self.result['target_binary']))
+        # TODO: Support more autocomplete systems
         if 'bash' in self.result['autocomplete']:
-            os.makedirs(os.path.join(self.config["workdir"], self.result['repo'], 'etc', 'bash_completion.d'))
-            with open(os.path.join(self.config["workdir"], self.result['repo'], 'etc', 'bash_completion.d', self.result['target_binary']), 'w') as file:
+            os.makedirs(os.path.join(self.package_path, 'etc', 'bash_completion.d'))
+            with open(os.path.join(self.package_path, 'etc', 'bash_completion.d', self.result['target_binary']), 'w') as file:
                 file.write(self.result['autocomplete']['bash'])
                 file.write("\n")
 
     def _renderRpmPackage(self):
-        # TODO: Write RPM package creator
-        pass
+        if self.result['name'].endswith('.rpm'):
+            self.result["rpm_package_filename"] = self.result['name']
+            self.result["rpm_package"] = os.path.join(self.config["builddir"], self.result['name'])
+            os.rename(self.result['file'], self.result["rpm_package"])
+        else:
+            rpmmap = [
+                's~^usr/include~%{_includedir}~',
+                's~^etc~%{_sysconfdir}~',
+                's~^usr/bin~%{_bindir}~',
+                's~^usr/sbin~%{_sbindir}~',
+            ]
+
+            if self.result['redhat_architecture'] == 'x64':
+                rpmmap.append('s~^usr/lib64~%{_libdir}~')
+                rpmmap.append('s~^usr/lib~%{_prefix}/lib~')
+            else:
+                rpmmap.append('s~^usr/lib64~%{_prefix}/lib64~')
+                rpmmap.append('s~^usr/lib~%{_libdir}~')
+
+            rpmmap.append('s~^usr/libexec~%{_libexecdir}~')
+            rpmmap.append('s~^usr/share/info~%{_infodir}~')
+            rpmmap.append('s~^usr/share/man~%{_mandir}~')
+            rpmmap.append('s~^usr/share/doc~%{_docdir}~')
+            rpmmap.append('s~^usr/share~%{_datadir}~')
+            rpmmap.append('s~^usr~%{_prefix}~')
+            rpmmap.append('s~^run~%{_rundir}~')
+            rpmmap.append('s~^var/lib~%{_sharedstatedir}~')
+            rpmmap.append('s~^var~%{_localstatedir}~')
+            try:
+                # TODO: Write RPM package creator
+                self._preparePackage()
+                os.makedirs(os.path.join(self.config["workdir"], 'SPEC'))
+                specfile=os.path.join(self.config["workdir"], 'SPEC', f"{self.result['repo']}.spec")
+                content = [
+                    f"Name:      {self.result['repo']}",
+                    f"Version:   {self.result['versionNumber']}",
+                    f"Release:   1",
+                    f"Summary:   {self.result['description']}",
+                    f"BuildArch: {self.result['redhat_architecture']}",
+                    f"Source0:   {self.package_path}",
+                    f"License:   {self.result['license']}",
+                ]
+                if 'redhat_dependencies' in self.result and self.result['redhat_dependencies'] != '':
+                    content.append(f"Requires:  {self.result['redhat_dependencies']}")
+                if 'homepage' in self.result and len(self.result['homepage']) > 0:
+                    content.append(f"URL:       {self.result['homepage']}")
+                content.append("")
+                content.append(f"{'%'}description")
+                content.append(self.result['description'])
+                content.append("")
+                content.append(f"{'%'}prep")
+                content.append("")
+                content.append(f"{'%'}build")
+                content.append("")
+                content.append(f"{'%'}install")
+                install_files = []
+                for root, _, files in os.walk(os.path.join(self.package_path)):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        rpm_path_file = file_path.replace(f"{self.package_path}/", '')
+                        for pattern in rpmmap:
+                            local_file = re.sub(pattern, '', rpm_path_file)
+                        mode = '755' if os.access(file_path, os.X_OK) else '644'
+                        content.append(f'install -D -m {mode} -o root -g root %{{SOURCE0}}/{local_file} ${{RPM_BUILD_ROOT}}/{rpm_path_file}')
+                        install_files.append(rpm_path_file)
+                content.append(f"{'%'}files")
+                for install_file in install_files:
+                    content.append(f"/{install_file}")
+
+                with open(specfile, 'w') as file:
+                    for line in content:
+                        file.write(f"{line}\n")
+
+                target_filename = f"{self.result['repo']}-{self.result['versionNumber']}-1.{self.result['redhat_architecture']}.rpm"
+                self.result["rpm_package_filename"] = target_filename
+                self.result["rpm_package"] = os.path.join(self.config["builddir"], target_filename)
+                cmd = f"rpmbuild --target {self.result['redhat_architecture']} --define '_topdir {self.config['workdir']}' -bb {specfile}"
+                with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+                    exit_code = process.wait()
+                    stdout = process.stdout.read().decode('utf-8')
+                    stderr = process.stderr.read().decode('utf-8')
+                    if exit_code > 0:
+                        logging.error(f"Build of {self.result['rpm_package']} failed")
+                        logging.error(f"stdout: {stdout}")
+                        logging.error(f"stderr: {stderr}")
+                        raise Exception("Build failure")
+                    
+                os.rename(os.path.join(self.config['workdir'], 'RPMS', self.result['redhat_architecture'], target_filename), self.result["rpm_package"])
+                
+                logging.debug(f"Build of {self.result['rpm_package']} succeeded")
+                        
+            except Exception as e:
+                pass
+    
 
     def _renderDebPackage(self):
         if self.result['name'].endswith('.deb'):
@@ -237,8 +373,8 @@ class TargetRelease:
         else:
             try:
                 self._preparePackage()
-                os.makedirs(os.path.join(self.config["workdir"], self.result['repo'], 'DEBIAN'))
-                with open(os.path.join(self.config["workdir"], self.result['repo'], 'DEBIAN', 'control'), 'w') as file:
+                os.makedirs(os.path.join(self.package_path, 'DEBIAN'))
+                with open(os.path.join(self.package_path, 'DEBIAN', 'control'), 'w') as file:
                     content = [
                         f"Package:      {self.result['repo']}",
                         f"Version:      {self.result['versionNumber']}",
@@ -258,7 +394,7 @@ class TargetRelease:
                 target_filename = f"{self.result['repo']}_{self.result['versionNumber']}_{self.result['debian_architecture']}.deb"
                 self.result["deb_package_filename"] = target_filename
                 self.result["deb_package"] = os.path.join(self.config["builddir"], target_filename)
-                cmd = f"dpkg-deb --build {os.path.join(self.config['workdir'], self.result['repo'])} {target_filename}"
+                cmd = f"dpkg-deb --build {self.package_path} {target_filename}"
                 with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
                     exit_code = process.wait()
                     stdout = process.stdout.read().decode('utf-8')
@@ -270,12 +406,12 @@ class TargetRelease:
                         raise Exception("Build failure")
 
                     logging.debug(f"Build of {self.result['deb_package']} succeeded")
+                shutil.rmtree(self.package_path)
 
             except Exception as e:
                 print(f"Builddir = '{self.config['builddir']}', Workdir = '{self.config['workdir']}'")
                 input("Pausing in-flight to verify issue. Press enter to continue")
                 raise e
-
 
     def getRelease(self):
         self._getReleaseData()
@@ -284,5 +420,5 @@ class TargetRelease:
             self._renderDebPackage()
         if 'rpm' in self.result['formats']:
             self._renderRpmPackage()
-        if os.path.exists(os.path.join(self.config["workdir"], self.result['repo'])):
-            shutil.rmtree(os.path.join(self.config["workdir"], self.result['repo']))
+        if os.path.exists(os.path.join(self.package_path)):
+            shutil.rmtree(os.path.join(self.package_path))
