@@ -39,6 +39,14 @@ or BSD-0 Clause license.
 
 ## How do I use it?
 
+### Get dependencies
+
+On Ubuntu and Debian based systems, you need:
+
+```
+sudo apt install -y rpm createrepo-c
+```
+
 ### Get the script
 
 Clone the repository and create a configuration file. A sample configuration

@@ -199,8 +199,6 @@ class TargetRelease:
             raise ValueError(f"Invalid platform defined. Got {self.result['platform']}")
     
     def _getAsset(self) -> bool:
-        self.package_path=os.path.join(self.config["workdir"], 'SOURCES', self.result['repo'])
-
         if "platform" not in self.result or self.result['platform'] == 'github':
             for asset in self.release['assets']:
                 nameMatch = re.match(self.result.get('object_regex'), asset['name'])
@@ -214,6 +212,8 @@ class TargetRelease:
                         versionNumber = self.release['published_at']
 
                     self.result['versionNumber'] = versionNumber
+                    self.package_id = f"{self.result['repo']}-{versionNumber}-{self.result['architecture']}"
+                    self.package_path = os.path.join(self.config["workdir"],'SOURCES',self.package_id)
 
                     with open(os.path.join(self.config["workdir"], asset['name']), 'wb') as downloadFile:
                         response = requests.get(asset['browser_download_url'], self.config["headers"])
@@ -299,16 +299,15 @@ class TargetRelease:
             rpmmap.append('s~^var/lib~%{_sharedstatedir}~')
             rpmmap.append('s~^var~%{_localstatedir}~')
             try:
-                # TODO: Write RPM package creator
                 self._preparePackage()
-                os.makedirs(os.path.join(self.config["workdir"], 'SPEC'))
-                specfile=os.path.join(self.config["workdir"], 'SPEC', f"{self.result['repo']}.spec")
+                if not os.path.exists(os.path.join(self.config["workdir"], 'SPEC')):
+                   os.makedirs(os.path.join(self.config["workdir"], 'SPEC'))
+                specfile=os.path.join(self.config["workdir"], 'SPEC', f"{self.package_id}.spec")
                 content = [
                     f"Name:      {self.result['repo']}",
                     f"Version:   {self.result['versionNumber']}",
                     f"Release:   1",
                     f"Summary:   {self.result['description']}",
-                    f"BuildArch: {self.result['redhat_architecture']}",
                     f"Source0:   {self.package_path}",
                     f"License:   {self.result['license']}",
                 ]
@@ -358,6 +357,17 @@ class TargetRelease:
                         raise Exception("Build failure")
                     
                 os.rename(os.path.join(self.config['workdir'], 'RPMS', self.result['redhat_architecture'], target_filename), self.result["rpm_package"])
+
+                cmd = f'rpm --define "%_signature gpg" --define "%_gpg_name {self.config["privatekey_id"]}" --addsign "{self.result["rpm_package"]}"'
+                with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+                    exit_code = process.wait()
+                    stdout = process.stdout.read().decode('utf-8')
+                    stderr = process.stderr.read().decode('utf-8')
+                    if exit_code > 0:
+                        logging.error(f"Signature {self.result['rpm_package']} failed")
+                        logging.error(f"stdout: {stdout}")
+                        logging.error(f"stderr: {stderr}")
+                        raise Exception("Signature failure")
                 
                 logging.debug(f"Build of {self.result['rpm_package']} succeeded")
                         

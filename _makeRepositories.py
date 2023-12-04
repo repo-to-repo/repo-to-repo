@@ -14,7 +14,8 @@ class MakeRepository:
     def __init__(self, runtime_config):
         self.runtime_config = runtime_config
         if self.runtime_config["pathmode"] is None:
-            shutil.rmtree(self.runtime_config["path"])
+            if os.path.exists(self.runtime_config["path"]):
+                shutil.rmtree(self.runtime_config["path"])
 
     def finalize(self):
         if self.runtime_config["pathmode"] is not None:
@@ -53,7 +54,7 @@ class MakeDebRepository:
                 suites_and_archives[asset['suite']][asset['archive']].append(asset['debian_architecture'])
 
             if runtime_config["pathmode"] is None:
-                target_path = target.path
+                target_path = runtime_config["path"]
             else:
                 target_path = os.path.join(
                     runtime_config["path"],
@@ -155,5 +156,40 @@ class MakeDebRepository:
 
 class MakeRPMRepository:
     def __init__(self, targets, runtime_config):
-        # TODO: Write RPM repo creator
+        target: TargetRelease = None
+        for target in targets:
+            if runtime_config["pathmode"] is None:
+                target_path = os.path.join(runtime_config["path"], "rpm")
+            else:
+                target_path = os.path.join(
+                    runtime_config["path"],
+                    runtime_config["pathmode"],
+                    "rpm"
+                )
+            if not os.path.exists(target_path):
+                os.makedirs(target_path)
+            os.rename(target.result['rpm_package'], os.path.join(target_path, target.result['rpm_package_filename']))
+
+        cmd = 'createrepo_c .'
+        with subprocess.Popen(cmd, cwd=target_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+            exit_code = process.wait()
+            stdout = process.stdout.read().decode('utf-8')
+            stderr = process.stderr.read().decode('utf-8')
+            if exit_code > 0:
+                logging.error(f"Signature {self.result['rpm_package']} failed")
+                logging.error(f"stdout: {stdout}")
+                logging.error(f"stderr: {stderr}")
+                raise Exception("Signature failure")
+
+        cmd = 'gpg --detach-sign --armor repodata/repomd.xml'
+        with subprocess.Popen(cmd, cwd=target_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+            exit_code = process.wait()
+            stdout = process.stdout.read().decode('utf-8')
+            stderr = process.stderr.read().decode('utf-8')
+            if exit_code > 0:
+                logging.error(f"Signature {self.result['rpm_package']} failed")
+                logging.error(f"stdout: {stdout}")
+                logging.error(f"stderr: {stderr}")
+                raise Exception("Signature failure")
+
         pass
