@@ -26,6 +26,8 @@ jobs:
             echo "DESCRIPTION=A python script to build RPM and-or DEB repositories of single-binary releases from github repos."
             echo "DEB_ARCHITECTURE=${ARCHITECTURE:-all}"
             echo "RPM_ARCHITECTURE=${ARCHITECTURE:-noarch}"
+            echo "DEPENDS=python3-requests"
+            echo "REQUIRES=python3-requests"
             echo "RELEASE=1"
             cd REPO
             echo "FIRST_YEAR=$(git log $(git rev-list --max-parents=0 HEAD) --date="format:%Y" --format="format:%ad")"
@@ -41,7 +43,7 @@ jobs:
           ) >> $GITHUB_ENV
 
       - name: Make Directory Structure
-        run: mkdir -p "SOURCES/${GITHUB_REPO_NAME}" SPECS release
+        run: mkdir -p "SOURCES/${GITHUB_REPO_NAME}" SPECS release ; mkdir -p "SOURCES/${GITHUB_REPO_NAME}/usr/share/doc/${GITHUB_REPO_NAME}/"
 
       - name: Copy script files into SOURCES
         run: |
