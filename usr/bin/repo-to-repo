@@ -1,0 +1,2 @@
+#!/usr/local/env sh
+/usr/share/repo-to-repo/repo-to-repo.py "$@"
