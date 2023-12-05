@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-/usr/share/repo-to-repo/repo-to-repo.py "$@"
+/usr/share/repo-to-repo/repo_to_repo.py "$@"
