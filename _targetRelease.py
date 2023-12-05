@@ -254,6 +254,18 @@ class TargetRelease:
         else:
             raise ValueError(f"Invalid platform defined. Got {self.result['platform']}")
 
+    def _set_ownership(self, directory_path, owner, group, directory_perm, file_perm):
+        for root, dirs, files in os.walk(directory_path):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                os.chown(file_path, owner, group)
+                os.chmod(file_path, file_perm)
+            for directory in dirs:
+                dir_path = os.path.join(root, directory)
+                os.chown(dir_path, owner, group)
+                os.chmod(dir_path, directory_perm)
+                self._set_ownership(dir_path, owner, group, directory_perm, file_perm)
+
     def _preparePackage(self) -> list:
         if not os.path.exists(self.config["workdir"]):
             raise FileNotFoundError(f"Workdir Path not found {self.config['workdir']}")
@@ -262,12 +274,16 @@ class TargetRelease:
 
         os.makedirs(os.path.join(self.package_path, 'usr', 'local', 'bin'))
         shutil.copy(self.result['file'], os.path.join(self.package_path, 'usr', 'local', 'bin', self.result['target_binary']))
+        self._set_ownership(self.package_path, 0, 0, 0o755, 0o755)
         # TODO: Support more autocomplete systems
         if 'bash' in self.result['autocomplete']:
             os.makedirs(os.path.join(self.package_path, 'etc', 'bash_completion.d'))
             with open(os.path.join(self.package_path, 'etc', 'bash_completion.d', self.result['target_binary']), 'w') as file:
                 file.write(self.result['autocomplete']['bash'])
                 file.write("\n")
+
+            self._set_ownership(os.path.join(self.package_path, 'etc'), 0, 0, 0o644, 0o755)
+        
 
     def _renderRpmPackage(self):
         if self.result['name'].endswith('.rpm'):
