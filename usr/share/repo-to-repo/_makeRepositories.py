@@ -171,6 +171,7 @@ class MakeRPMRepository:
             os.rename(target.result['rpm_package'], os.path.join(target_path, target.result['rpm_package_filename']))
 
         cmd = 'createrepo_c .'
+        logging.debug(f"Executing command: {cmd}")
         with subprocess.Popen(cmd, cwd=target_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
             exit_code = process.wait()
             stdout = process.stdout.read().decode('utf-8')
@@ -182,6 +183,7 @@ class MakeRPMRepository:
                 raise Exception("Signature failure")
 
         cmd = 'gpg --detach-sign --armor repodata/repomd.xml'
+        logging.debug(f"Executing command: {cmd}")
         with subprocess.Popen(cmd, cwd=target_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
             exit_code = process.wait()
             stdout = process.stdout.read().decode('utf-8')

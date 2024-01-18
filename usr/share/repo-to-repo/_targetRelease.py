@@ -409,6 +409,7 @@ class TargetRelease:
             self.result["rpm_package"] = os.path.join(
                 self.config["builddir"], target_filename)
             cmd = f"rpmbuild --target {self.result['redhat_architecture']} --define '_topdir {self.config['workdir']}' -bb {specfile}"
+            logging.debug(f"Executing command: {cmd}")
             with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
                 exit_code = process.wait()
                 stdout = process.stdout.read().decode('utf-8')
@@ -424,6 +425,7 @@ class TargetRelease:
                 self.config['workdir'], 'RPMS', self.result['redhat_architecture'], target_filename), self.result["rpm_package"])
 
             cmd = f'rpm --define "%_signature gpg" --define "%_gpg_name {self.config["privatekey_id"]}" --addsign "{self.result["rpm_package"]}"'
+            logging.debug(f"Executing command: {cmd}")
             with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
                 exit_code = process.wait()
                 stdout = process.stdout.read().decode('utf-8')
@@ -473,6 +475,7 @@ class TargetRelease:
             self.result["deb_package"] = os.path.join(
                 self.config["builddir"], target_filename)
             cmd = f"dpkg-deb --build {self.package_path} {target_filename}"
+            logging.debug(f"Executing command: {cmd}")
             with subprocess.Popen(cmd, cwd=self.config["builddir"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
                 exit_code = process.wait()
                 stdout = process.stdout.read().decode('utf-8')

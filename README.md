@@ -24,18 +24,10 @@ Ansible from RedHat or Puppet from Perforce).
 
 ## What state is the project in?
 
-Currently, this project should be considered to be pre-MVP. Debian packages and
-repositories are created, but RPM based repositories and packages are not
-currently supported at all. As a pre-MVP, configurations and file structures
-are near-guaranteed to change between one development iteration and the next.
+This project should be considered Alpha software. To the best of my knowledge
+it is not being used in anything live or long-term testing.
 
-In addition, this script currently only understands binary file releases or
-DEB file releases. While the example file lists `.tar.gz` or `.tgz` objects to
-consume, these are currently entirely unhandled (beyond creating a DEB package
-which contains that compressed file stored as the "target binary" filename).
-
-It is currently unlicensed, although it may end up being released under an MIT
-or BSD-0 Clause license.
+The software is released under an [MIT license](LICENSE).
 
 ## How do I use it?
 
@@ -43,7 +35,7 @@ or BSD-0 Clause license.
 
 On Ubuntu and Debian based systems, you need:
 
-```
+```bash
 sudo apt install -y rpm createrepo-c
 ```
 
