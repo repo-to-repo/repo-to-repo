@@ -178,7 +178,7 @@ class TargetRelease:
             raise ApiNotAvailable("Unable to load github api")
         if response.status_code != 200:
             raise ApiNotAvailable(
-                f"Failed to retrieve data from GitHub API. Status code: {response.status_code}")
+                f"Failed to retrieve data from GitHub API Endpoint: {api_url}. Status code: {response.status_code}")
 
         return response.json()
 
@@ -256,7 +256,7 @@ class TargetRelease:
                                 f"Written file to {downloadFile.name}")
                         else:
                             raise FileNotFoundError(
-                                "Failed to download the file")
+                                f"Failed to download the file: {asset['browser_download_url']}")
 
                     file_extensions = ['.tgz', '.gz', '.bz2', '.xz', '.zip']
                     unpack_dir = os.path.join(self.config['workdir'], 'unpack')
