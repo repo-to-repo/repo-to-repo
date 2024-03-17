@@ -1,0 +1,169 @@
+{
+    "path": "{{ path_to_nginx_default_base }}",
+    "architecture": "x86-64",
+    "formats": [
+        "rpm",
+        "deb"
+    ],
+    "repos": [
+        {
+            "owner": "kubernetes-sigs",
+            "repo": "kustomize",
+            "target_binary": "kustomize",
+            "version_match": "kustomize/v",
+            "autocomplete": {
+                "bash": "source <(kustomize completion bash)"
+            },
+            "targets": [
+                {
+                    "object_regex": "kustomize_v.*_linux_amd64.tar.gz"
+                }
+            ]
+        },
+        {
+            "owner": "Versent",
+            "repo": "saml2aws",
+            "target_binary": "saml2aws",
+            "autocomplete": {
+                "bash": "source <(saml2aws --completion-script-bash)"
+            },
+            "targets": [
+                {
+                    "object_regex": "saml2aws_.*_linux_amd64.tar.gz"
+                }
+            ]
+        },
+        {
+            "owner": "prey",
+            "repo": "prey-node-client",
+            "formats": [
+                "deb"
+            ],
+            "targets": [
+                {
+                    "object_regex": "prey_.*_amd64.deb"
+                }
+            ]
+        },
+        {
+            "owner": "99designs",
+            "repo": "aws-vault",
+            "target_binary": "aws-vault",
+            "targets": [
+                {
+                    "object_regex": "aws-vault-linux-amd64"
+                }
+            ]
+        },
+        {
+            "owner": "gruntwork-io",
+            "repo": "terragrunt",
+            "target_binary": "terragrunt",
+            "targets": [
+                {
+                    "object_regex": "terragrunt_linux_amd64"
+                }
+            ]
+        },
+        {
+            "owner": "alexei-led",
+            "repo": "spotinfo",
+            "target_binary": "spotinfo",
+            "targets": [
+                {
+                    "object_regex": "spotinfo_linux_amd64"
+                }
+            ]
+        },
+        {
+            "owner": "harness",
+            "repo": "drone-cli",
+            "target_binary": "drone",
+            "targets": [
+                {
+                    "object_regex": "drone_linux_amd64.tar.gz"
+                }
+            ]
+        },
+        {
+            "owner": "getsops",
+            "repo": "sops",
+            "formats": [
+                "deb"
+            ],
+            "targets": [
+                {
+                    "object_regex": "sops_.*_amd64.deb"
+                }
+            ]
+        },
+        {
+            "owner": "getsops",
+            "repo": "sops",
+            "formats": [
+                "rpm"
+            ],
+            "targets": [
+                {
+                    "object_regex": "sops-.*.x86_64.rpm"
+                }
+            ]
+        },
+        {
+            "owner": "GoogleContainerTools",
+            "repo": "skaffold",
+            "target_binary": "skaffold",
+            "targets": [
+                {
+                    "object_regex": "skaffold-linux-amd64"
+                }
+            ]
+        },
+        {
+            "owner": "ahmetb",
+            "repo": "kubectx",
+            "target_binary": "kubectx",
+            "autocomplete": {
+                "bash": "_kube_contexts() { local curr_arg ; curr_arg=${COMP_WORDS[COMP_CWORD]} ; COMPREPLY=( $(compgen -W \"- $(kubectl config get-contexts --output='name')\" -- $curr_arg ) ) } ; complete -F _kube_contexts kubectx kctx"
+            },
+            "targets": [
+                {
+                    "object_regex": "kubectx"
+                }
+            ]
+        },
+        {
+            "owner": "ahmetb",
+            "repo": "kubectx",
+            "target_binary": "kubens",
+            "autocomplete": {
+                "bash": "_kube_namespaces() { local curr_arg ; curr_arg=${COMP_WORDS[COMP_CWORD]} ; COMPREPLY=( $(compgen -W \"- $(kubectl get namespaces -o=jsonpath='{range .items[*].metadata.name}{@}{\"\n\"}{end}')\" -- $curr_arg ) ) } ; complete -F _kube_namespaces kubens kns"
+            },
+            "targets": [
+                {
+                    "object_regex": "kubens"
+                }
+            ]
+        },
+        {
+            "owner": "boz",
+            "repo": "kail",
+            "target_binary": "kail",
+            "targets": [
+                {
+                    "object_regex": "kail_v.*_linux_amd64.tar.gz"
+                }
+            ]
+        },
+        {
+            "owner": "derailed",
+            "repo": "k9s",
+            "target_binary": "k9s",
+            "targets": [
+                {
+                    "object_regex": "k9s_Linux_amd64.tar.gz"
+                }
+            ]
+        }
+    ]
+}

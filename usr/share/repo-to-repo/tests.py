@@ -3,6 +3,8 @@ import unittest
 from unittest.mock import patch
 import tempfile
 import os
+import responses
+import requests
 
 from repo_to_repo import Configuration
 from _exceptions import PGPLoadError, ConfigErrorNoRepositories
@@ -112,6 +114,18 @@ class TestTargets(AllTests):
 
     # TODO: Write more tests! Some things to consider:
     # TODO: We probably need to put some mocking in place for "interacting with github" so that we don't burn through api credits
+    # def test_an_api():
+    #     with responses.RequestsMock() as rsps:
+    #         rsps.add(
+    #             responses.GET,
+    #             "http://example.org",
+    #             body="{}",
+    #             status=200,
+    #             content_type="application/json"
+    #         )
+    #         resp = requests.get("http://example.org")
+    #         assert resp.status_code == 200
+    # The above is test code which can be extended to test Github API calls
     # TODO: Write a test which confirms that everything works right given a known repo, release name and binary target
     # TODO: Write a test which confirms how we handle repos which aren't available
     # TODO: Write a test which confirms how we handle a repo with no releases

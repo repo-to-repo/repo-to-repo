@@ -1,0 +1,101 @@
+---
+- name: Run Installation
+  hosts: all
+  become: true
+  tasks:
+    - name: Run Installation on supported OS bases
+      when: ansible_os_family in ['Debian', 'RedHat']
+      block:
+        - name: Update repos
+          when: ansible_os_family == 'Debian'
+          ansible.builtin.apt:
+            update_cache: true
+
+        - name: Install nginx
+          ansible.builtin.package:
+            name: nginx
+            state: present
+
+        - name: Set nginx default base path
+          ansible.builtin.set_fact:
+            path_to_nginx_default_base: |-
+              {%- if ansible_os_family == 'Debian' -%}/var/www/html{% elif ansible_os_family == 'RedHat' -%}/usr/share/nginx/html{% endif %}
+
+        - name: Create application path
+          ansible.builtin.file:
+            path: "/etc/repo-to-repo"
+            state: directory
+            owner: root
+            group: root
+            mode: "0640"
+
+        - name: Install Debian Dependencies
+          when: ansible_os_family == 'Debian'
+          ansible.builtin.apt:
+            name:
+              - createrepo-c
+              - rpm
+            state: present
+
+        - name: Install RedHat Dependencies
+          when: ansible_os_family == 'RedHat'
+          ansible.builtin.dnf:
+            name:
+              - dpkg
+              - rpm
+              - rpm-sign
+              - rpmdevtools
+            state: present
+
+        - name: Determine latest GitHub release
+          become: false
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/repo-to-repo/repo-to-repo/releases/latest"
+            body_format: json
+            follow_redirects: true
+          register: _github_release
+          until: _github_release.status == 200
+          retries: 5
+
+        - name: Set version from the latest GitHub release
+          ansible.builtin.set_fact:
+            repo_version: "{{ _github_release.json.tag_name | regex_replace('^v?(.*)$', '\\1') }}"
+
+        - name: Install repo-to-repo on Debian based systems
+          when: ansible_os_family == 'Debian'
+          ansible.builtin.apt:
+            deb: "https://github.com/repo-to-repo/repo-to-repo/releases/download/v{{ repo_version }}/repo-to-repo_{{ repo_version }}_all.deb"
+            state: present
+
+        - name: Install repo-to-repo on RedHat based Systems
+          when: ansible_os_family == 'RedHat'
+          ansible.builtin.dnf:
+            name: "https://github.com/repo-to-repo/repo-to-repo/releases/download/v{{ repo_version }}/repo-to-repo-{{ repo_version }}-1.noarch.rpm"
+            state: present
+            disable_gpg_check: true
+
+        # This task needs to use the shell module because it requires task chaining
+        - name: Create GPG Key # noqa command-instead-of-shell
+          ansible.builtin.shell:
+            cmd: |-
+              export GNUPGHOME="$(mktemp -d /tmp/pgpkeys-XXXXXX)" && \
+              gpg --no-tty --batch --gen-key {{ path_to_pgp_key_batch }}pgp-key.batch && \
+              gpg --armor --export "Repo-To-Repo Packager" > public.asc && \
+              gpg --armor --export-secret-keys "Repo-To-Repo Packager" > private.asc && \
+              gpg --armor --export "Repo-To-Repo Packager" > public.asc && \
+              gpg --armor --export-secret-keys "Repo-To-Repo Packager" > private.asc && \
+              rm -Rf "$GNUPGHOME"
+            chdir: "/etc/repo-to-repo"
+            creates: "/etc/repo-to-repo/public.asc"
+
+        - name: Create config file
+          ansible.builtin.copy:
+            src: repo-to-repo.json
+            dest: /etc/repo-to-repo/basic.conf
+            owner: root
+            group: root
+            mode: "0644"
+
+        - name: Run repo-to-repo
+          ansible.builtin.command: /usr/bin/repo-to-repo --config /etc/repo-to-repo/basic.conf --pgp-key "/etc/repo-to-repo/private.asc"
+          changed_when: true
